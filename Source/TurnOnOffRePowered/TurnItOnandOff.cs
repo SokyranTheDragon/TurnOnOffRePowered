@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using HugsLib;
 using HugsLib.Settings;
+using Multiplayer.API;
 using RePower;
 using RimWorld;
 using UnityEngine;
@@ -71,7 +72,7 @@ namespace TurnOnOffRePowered
 
         private SettingHandle<float> lowValue;
 
-        private int ticksToRescan;
+        private static bool shouldRescanThisTick = true;
 
         private SettingHandle<bool> verboseLogging;
 
@@ -135,6 +136,8 @@ namespace TurnOnOffRePowered
             instance = this;
 
             LogMessage("Registered instance");
+
+            if (MP.IsInMultiplayer) MP.RegisterAll();
         }
 
         public override void SettingsChanged()
@@ -162,25 +165,27 @@ namespace TurnOnOffRePowered
                 buildingsInUseThisTick.Clear();
             }
 
-            if (Find.CurrentMap == null)
+            if (!MP.IsInMultiplayer || MP.IsHosting)
             {
-                Log.ErrorOnce("[TurnOnOffRepowered] No home map found, cannot find any colony-owned buildings",
-                    "TurnOnOffRepowered".GetHashCode());
-                return;
+                if (Find.CurrentMap == null)
+                {
+                    Log.ErrorOnce("[TurnOnOffRepowered] No home map found, cannot find any colony-owned buildings",
+                        "TurnOnOffRepowered".GetHashCode());
+                    return;
+                }
+
+                var visibleBuildings = Find.CurrentMap.listerBuildings.allBuildingsColonist.Count;
+                if (visibleBuildings != lastVisibleBuildings)
+                {
+                    lastVisibleBuildings = visibleBuildings;
+
+                    SetToRescan();
+                }
             }
 
-            var visibleBuildings = Find.CurrentMap.listerBuildings.allBuildingsColonist.Count;
-            if (visibleBuildings != lastVisibleBuildings)
+            if (currentTick % 2000 == 0 || shouldRescanThisTick)
             {
-                lastVisibleBuildings = visibleBuildings;
-
-                ticksToRescan = 0;
-            }
-
-            --ticksToRescan;
-            if (ticksToRescan < 0)
-            {
-                ticksToRescan = 2000;
+                shouldRescanThisTick = false;
                 ScanForThings();
             }
 
@@ -221,6 +226,9 @@ namespace TurnOnOffRePowered
                 }
             }
         }
+
+        [SyncMethod]
+        private static void SetToRescan() => shouldRescanThisTick = true;
 
         private static void EvalAutodoors()
         {
@@ -563,7 +571,7 @@ namespace TurnOnOffRePowered
             HydroponcsBasins.Clear();
             Turrets.Clear();
             inUseTick = 0;
-            ticksToRescan = 0;
+            shouldRescanThisTick = true;
             lastVisibleBuildings = 0;
         }
 

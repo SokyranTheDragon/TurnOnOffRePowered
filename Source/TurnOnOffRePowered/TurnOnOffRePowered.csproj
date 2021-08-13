@@ -18,6 +18,9 @@
       <Version>*</Version>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
+    <PackageReference Include="RimWorld.MultiplayerAPI" Version="0.3.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
     <PackageReference Include="UnlimitedHugs.Rimworld.HugsLib">
       <Version>*</Version>
       <ExcludeAssets>runtime</ExcludeAssets>
